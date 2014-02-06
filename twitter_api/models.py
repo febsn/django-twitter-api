@@ -11,6 +11,7 @@ import fields
 import dateutil.parser
 import logging
 import re
+import pytz
 
 __all__ = ['User', 'Status', 'TwitterContentError', 'TwitterModel', 'TwitterManager', 'UserTwitterManager']
 
@@ -287,6 +288,7 @@ class TwitterCommonModel(TwitterModel):
     def parse(self):
         self._response.pop('id_str', None)
         super(TwitterCommonModel, self).parse()
+        
 
 class User(TwitterCommonModel):
     class Meta:
@@ -361,7 +363,7 @@ class User(TwitterCommonModel):
 
 class Status(TwitterCommonModel):
     class Meta:
-        pass
+        ordering = ['-created_at']
 
     author = models.ForeignKey('User', related_name='statuses')
 
@@ -408,6 +410,8 @@ class Status(TwitterCommonModel):
         self._response.pop('in_reply_to_user_id_str', None)
         self._response.pop('in_reply_to_status_id_str', None)
 
+        self.created_at = self._response.pop('created_at').replace(tzinfo=pytz.UTC)
+
         for field_name, model in (('in_reply_to_status', Status), ('in_reply_to_user', User)):
             try:
                 id = int(self._response.pop(field_name + '_id', None))
@@ -419,6 +423,7 @@ class Status(TwitterCommonModel):
                     pass
             except TypeError:
                 pass
+        
 
         super(Status, self).parse()
 
